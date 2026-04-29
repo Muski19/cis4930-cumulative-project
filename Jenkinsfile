@@ -26,19 +26,19 @@ pipeline {
             }
         }
 
-        stage('Run Container') {
+        stage('Deploy with Docker Compose') {
             steps {
-                sh 'docker rm -f cis4930-flask-app || true'
-                sh 'docker run -d --name cis4930-flask-app -p 5001:5000 cis4930-flask-app'
+                sh 'docker compose down || true'
+                sh 'docker compose up -d --build'
             }
         }
 
-        stage('Verify Deployment') {
+        stage('Verify Deployment Through Nginx') {
             steps {
                 sh '''
                 for i in 1 2 3 4 5; do
-                    curl -f http://localhost:5001/health && exit 0
-                    echo "Waiting for app..."
+                    curl -f http://localhost:8080/health && exit 0
+                    echo "Waiting for app through Nginx..."
                     sleep 2
                 done
                 exit 1
@@ -49,7 +49,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker rm -f cis4930-flask-app || true'
+            sh 'docker compose down || true'
         }
     }
 }
