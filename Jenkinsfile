@@ -29,13 +29,20 @@ pipeline {
         stage('Run Container') {
             steps {
                 sh 'docker rm -f cis4930-flask-app || true'
-                sh 'docker run -d --name cis4930-flask-app -p 5000:5000 cis4930-flask-app'
+                sh 'docker run -d --name cis4930-flask-app -p 5001:5000 cis4930-flask-app'
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                sh 'curl -f http://localhost:5000/health'
+                sh '''
+                for i in 1 2 3 4 5; do
+                    curl -f http://localhost:5001/health && exit 0
+                    echo "Waiting for app..."
+                    sleep 2
+                done
+                exit 1
+                '''
             }
         }
     }
