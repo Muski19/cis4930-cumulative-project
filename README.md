@@ -14,7 +14,7 @@ This project demonstrates a real-world CI/CD pipeline using multiple industry to
 6. [Jenkins Setup](#jenkins-setup)
 7. [Pipeline Stages Explained](#pipeline-stages-explained)
 8. [Running the Project Locally](#running-the-project-locally)
-9. [How to Capture Demo Screenshots](#how-to-capture-demo-screenshots)
+9. [Demo Screenshots](#demo-screenshots)
 ---
  
 ## Project Overview
