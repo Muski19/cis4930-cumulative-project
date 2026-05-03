@@ -112,6 +112,7 @@ pipeline {
                     echo "/ (root) check PASSED"
 
                     // ── Print full response bodies for logs/screenshots ──────
+                    echo "Verifying Flask endpoints created in app.py"
                     echo "=== Final response bodies ==="
                     bat 'curl -s http://localhost:8081/health'
                     bat 'curl -s http://localhost:8081/info'
