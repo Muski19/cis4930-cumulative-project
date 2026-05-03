@@ -9,7 +9,7 @@ services:
     image: nginx:latest
     container_name: cis4930-nginx
     ports:
-      - "8080:80"
+      - "8081:80"
     volumes:
       - ./nginx:/etc/nginx/conf.d
     depends_on:

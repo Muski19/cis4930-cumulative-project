@@ -44,7 +44,7 @@ pipeline {
                     def healthPassed = false
                     for (int i = 1; i <= 5; i++) {
                         def status = bat(
-                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8080/health',
+                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8081/health',
                             returnStdout: true
                         ).trim()
                         echo "  [Attempt ${i}/5] /health → HTTP ${status}"
@@ -67,7 +67,7 @@ pipeline {
                     def infoPassed = false
                     for (int i = 1; i <= 5; i++) {
                         def status = bat(
-                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8080/info',
+                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8081/info',
                             returnStdout: true
                         ).trim()
                         echo "  [Attempt ${i}/5] /info → HTTP ${status}"
@@ -90,7 +90,7 @@ pipeline {
                     def rootPassed = false
                     for (int i = 1; i <= 5; i++) {
                         def status = bat(
-                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8080/',
+                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8081/',
                             returnStdout: true
                         ).trim()
                         echo "  [Attempt ${i}/5] / → HTTP ${status}"
@@ -110,9 +110,9 @@ pipeline {
 
                     // ── Print full response bodies for logs/screenshots ──────
                     echo "=== Final response bodies ==="
-                    bat 'curl -s http://localhost:8080/health'
-                    bat 'curl -s http://localhost:8080/info'
-                    bat 'curl -s http://localhost:8080/'
+                    bat 'curl -s http://localhost:8081/health'
+                    bat 'curl -s http://localhost:8081/info'
+                    bat 'curl -s http://localhost:8081/'
                     echo "All deployment verification checks PASSED."
                 }
             }
