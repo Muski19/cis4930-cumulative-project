@@ -14,7 +14,7 @@ def health():
 def info():
     return jsonify({
         "project": "CIS 4930 Cumulative Project",
-        "tools": ["GitHub", "Jenkins", "Docker", "Flask"],
+        "tools": ["GitHub", "Jenkins", "Docker", "Docker Compose", "Flask", "Nginx", "Pytest"],
         "purpose": "Demonstrate a simple automated DevOps workflow"
     })
 

@@ -25,6 +25,10 @@ def test_info():
 
     data = response.get_json()
     assert data["project"] == "CIS 4930 Cumulative Project"
+    assert "GitHub" in data["tools"]
     assert "Jenkins" in data["tools"]
     assert "Docker" in data["tools"]
+    assert "Docker Compose" in data["tools"]
     assert "Flask" in data["tools"]
+    assert "Nginx" in data["tools"]
+    assert "Pytest" in data["tools"]
