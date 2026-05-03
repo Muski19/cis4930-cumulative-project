@@ -131,7 +131,7 @@ pipeline {
             bat 'docker compose logs || exit 0'
         }
         always {
-            // bat 'docker compose down || exit 0' screenshot purpose
+            bat 'docker compose down || exit 0'
             echo "Cleanup complete."
         }
     }

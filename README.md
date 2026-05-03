@@ -259,4 +259,4 @@ docker compose down
 
 ### Info Page View
 
-![alt text](image-7.png)
+![info page](image-7.png)
