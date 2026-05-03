@@ -10,42 +10,41 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'python3 -m pip install --break-system-packages -r requirements.txt'
+                bat 'pip install -r requirements.txt'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'python3 -m pytest --tb=short -v'
+                bat 'python -m pytest --tb=short -v'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t cis4930-flask-app .'
+                bat 'docker build -t cis4930-flask-app .'
             }
         }
 
         stage('Deploy with Docker Compose') {
             steps {
-                sh 'docker-compose down || true'
-                sh 'docker-compose up -d --build'
+                bat 'docker compose down || exit 0'
+                bat 'docker compose up -d --build'
             }
         }
 
         stage('Verify Deployment Through Nginx') {
             steps {
                 script {
-                    // Wait for containers to be ready before probing
                     echo "Waiting for containers to initialize..."
-                    sh 'sleep 5'
+                    sleep(time: 5, unit: 'SECONDS')
 
                     // ── Health endpoint ──────────────────────────────────────
                     echo "Checking /health endpoint..."
                     def healthPassed = false
                     for (int i = 1; i <= 5; i++) {
-                        def status = sh(
-                            script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health',
+                        def status = bat(
+                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8080/health',
                             returnStdout: true
                         ).trim()
                         echo "  [Attempt ${i}/5] /health → HTTP ${status}"
@@ -54,8 +53,8 @@ pipeline {
                             break
                         }
                         if (i < 5) {
-                            echo "  Not ready yet — retrying in 3 s..."
-                            sh 'sleep 3'
+                            echo "  Not ready yet — retrying in 3s..."
+                            sleep(time: 3, unit: 'SECONDS')
                         }
                     }
                     if (!healthPassed) {
@@ -67,8 +66,8 @@ pipeline {
                     echo "Checking /info endpoint..."
                     def infoPassed = false
                     for (int i = 1; i <= 5; i++) {
-                        def status = sh(
-                            script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/info',
+                        def status = bat(
+                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8080/info',
                             returnStdout: true
                         ).trim()
                         echo "  [Attempt ${i}/5] /info → HTTP ${status}"
@@ -77,8 +76,8 @@ pipeline {
                             break
                         }
                         if (i < 5) {
-                            echo "  Not ready yet — retrying in 3 s..."
-                            sh 'sleep 3'
+                            echo "  Not ready yet — retrying in 3s..."
+                            sleep(time: 3, unit: 'SECONDS')
                         }
                     }
                     if (!infoPassed) {
@@ -90,8 +89,8 @@ pipeline {
                     echo "Checking / (root) endpoint..."
                     def rootPassed = false
                     for (int i = 1; i <= 5; i++) {
-                        def status = sh(
-                            script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/',
+                        def status = bat(
+                            script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:8080/',
                             returnStdout: true
                         ).trim()
                         echo "  [Attempt ${i}/5] / → HTTP ${status}"
@@ -100,8 +99,8 @@ pipeline {
                             break
                         }
                         if (i < 5) {
-                            echo "  Not ready yet — retrying in 3 s..."
-                            sh 'sleep 3'
+                            echo "  Not ready yet — retrying in 3s..."
+                            sleep(time: 3, unit: 'SECONDS')
                         }
                     }
                     if (!rootPassed) {
@@ -111,9 +110,9 @@ pipeline {
 
                     // ── Print full response bodies for logs/screenshots ──────
                     echo "=== Final response bodies ==="
-                    sh 'curl -s http://localhost:8080/health'
-                    sh 'curl -s http://localhost:8080/info'
-                    sh 'curl -s http://localhost:8080/'
+                    bat 'curl -s http://localhost:8080/health'
+                    bat 'curl -s http://localhost:8080/info'
+                    bat 'curl -s http://localhost:8080/'
                     echo "All deployment verification checks PASSED."
                 }
             }
@@ -126,10 +125,10 @@ pipeline {
         }
         failure {
             echo "Pipeline failed. Check the logs above for details."
-            sh 'docker-compose logs || true'
+            bat 'docker compose logs || exit 0'
         }
         always {
-            sh 'docker-compose down || true'
+            bat 'docker compose down || exit 0'
             echo "Cleanup complete."
         }
     }
