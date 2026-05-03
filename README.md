@@ -1,11 +1,11 @@
 # CIS 4930 Cumulative Project
-
+ 
 This project demonstrates a real-world CI/CD pipeline using multiple industry tools working together: GitHub, Jenkins, Docker, Docker Compose, Flask, Nginx, and Pytest.
-
+ 
 ---
-
+ 
 ## Table of Contents
-
+ 
 1. [Project Overview](#project-overview)
 2. [Tools Used](#tools-used)
 3. [Architecture](#architecture)
@@ -14,20 +14,19 @@ This project demonstrates a real-world CI/CD pipeline using multiple industry to
 6. [Jenkins Setup](#jenkins-setup)
 7. [Pipeline Stages Explained](#pipeline-stages-explained)
 8. [Running the Project Locally](#running-the-project-locally)
-9. [Demo Screenshots](#demo-screenshots)
-
+9. [How to Capture Demo Screenshots](#how-to-capture-demo-screenshots)
 ---
-
+ 
 ## Project Overview
-
+ 
 The goal of this project is to simulate a real-world DevOps pipeline where a Flask web application is automatically tested, containerized, deployed behind a reverse proxy, and verified — all triggered and orchestrated by Jenkins.
-
+ 
 When a developer pushes code to GitHub, Jenkins picks it up, runs the full pipeline, and confirms the live application is healthy before declaring success.
-
+ 
 ---
-
+ 
 ## Tools Used
-
+ 
 | Tool | Purpose |
 |---|---|
 | **GitHub** | Version control and source of truth for all project files |
@@ -37,23 +36,23 @@ When a developer pushes code to GitHub, Jenkins picks it up, runs the full pipel
 | **Flask** | Lightweight Python web application |
 | **Nginx** | Reverse proxy that routes external traffic to the Flask container |
 | **Pytest** | Automated test suite that runs before any deployment |
-
+ 
 ---
-
+ 
 ## Architecture
-
+ 
 ```
 Client (browser / curl)
           │
           ▼
-    Nginx  (host port 8080  →  container port 80)
+    Nginx  (host port 8081  →  container port 80)
           │
           ▼  proxy_pass
     Flask App  (container port 5000, not exposed to host)
 ```
-
+ 
 Nginx is the only service with a public port. It forwards every request to the Flask container over Docker's internal network. This mirrors a production pattern where the app server is never directly reachable from the outside.
-
+ 
 ```
 ┌─────────────────────────────────────────────┐
 │              Docker Network                 │
@@ -64,25 +63,29 @@ Nginx is the only service with a public port. It forwards every request to the F
 │  └──────┬───────┘     └──────────────────┘  │
 │         │                                   │
 └─────────┼───────────────────────────────────┘
-          │ host port 8080
+          │ host port 8081
           ▼
       Developer / Jenkins
 ```
-
+ 
+> **Port summary:**
+> - `localhost:8080` → Jenkins UI
+> - `localhost:8081` → Live Flask app through Nginx
+ 
 ---
-
+ 
 ## Application Endpoints
-
+ 
 | Endpoint | Method | Description |
 |---|---|---|
 | `/` | GET | Home page — confirms the app is running |
 | `/health` | GET | Returns `{"status": "ok"}` — used by Jenkins for deployment verification |
 | `/info` | GET | Returns project metadata (name, tools used, purpose) |
-
+ 
 ---
-
+ 
 ## Workflow
-
+ 
 ```
  1. Developer pushes code to GitHub
           │
@@ -109,155 +112,151 @@ Nginx is the only service with a public port. It forwards every request to the F
           │                 retries up to 5 times per endpoint
           │                 prints full response bodies to the log
           ▼
- 9. post { always }  →  docker-compose down cleans up containers
+ 9. post { always }  →  docker compose down cleans up containers
 ```
-
+ 
 ---
-
+ 
 ## Jenkins Setup
-
+ 
 ### Prerequisites
-
-- Jenkins installed and running (locally or on a VM)
-- The Jenkins agent must have installed:
-  - `python3` and `pip3`
-  - `docker` and `docker compose` (the agent user must be in the `docker` group)
-  - `curl`
+ 
+- Jenkins installed and running on Windows
+- Docker Desktop installed and **running** before triggering the pipeline
+- Python 3 and pip available on the system PATH
+- `curl` available on the system PATH
 - A GitHub repository containing this project
-
+### Accessing Jenkins
+ 
+Open your browser and go to:
+ 
+```
+http://localhost:8080
+```
+ 
+Jenkins runs on port 8080 by default. The Flask app (through Nginx) runs separately on port 8081 — these two ports do not conflict.
+ 
 ### Connecting Jenkins to GitHub
-
-1. Open Jenkins → **New Item** → **Pipeline** → give it a name → OK.
-2. Under **Pipeline**, set **Definition** to `Pipeline script from SCM`.
-3. Set **SCM** to `Git` and paste your repository URL.
-4. Set **Branch Specifier** to `*/main` (or whichever branch you use).
-5. Set **Script Path** to `Jenkinsfile`.
-6. Save.
-
+ 
+1. Log in to Jenkins at `http://localhost:8080`
+2. Click **New Item** → enter a name → select **Pipeline** → click **OK**
+3. Scroll to the **Pipeline** section at the bottom of the page
+4. Set **Definition** to `Pipeline script from SCM`
+5. Set **SCM** to `Git`
+6. Paste your GitHub repository URL into the **Repository URL** field
+7. Set **Branch Specifier** to `*/main`
+8. Set **Script Path** to `Jenkinsfile`
+9. Click **Save**
 ### Triggering the Pipeline
-
-**Option A — Manual run:**  
-Click **Build Now** in the Jenkins job to run the pipeline immediately.
-
-**Option B — SCM Polling (recommended for local Jenkins):**  
-Under **Build Triggers**, enable **Poll SCM** and set the schedule to `H/5 * * * *` (checks every 5 minutes).
-
-**Option C — GitHub Webhook (requires Jenkins reachable from GitHub):**  
-Under **Build Triggers**, enable **GitHub hook trigger for GITScm polling**. Then add a webhook in your GitHub repo settings pointing to `http://<your-jenkins-url>/github-webhook/`.
-
+ 
+**Option A — Manual run (recommended for demos):**
+Click **Build Now** on the left sidebar of your Jenkins job.
+ 
+**Option B — SCM Polling:**
+Under **Build Triggers**, enable **Poll SCM** and set the schedule to `H/5 * * * *` (checks every 5 minutes for new commits).
+ 
+**Option C — GitHub Webhook:**
+Under **Build Triggers**, enable **GitHub hook trigger for GITScm polling**. Then in your GitHub repo go to **Settings → Webhooks → Add webhook** and set the Payload URL to:
+```
+http://localhost:8080/github-webhook/
+```
+ 
 ---
-
+ 
 ## Pipeline Stages Explained
-
+ 
 ### Stage 1 — Checkout
-```groovy
-checkout scm
-```
-Jenkins pulls the latest commit from the configured GitHub branch onto the agent workspace. This is the starting point for every run.
-
+Jenkins pulls the latest commit from GitHub onto the agent workspace. This is the starting point for every run.
+ 
 ### Stage 2 — Install Dependencies
-```groovy
-sh 'python3 -m pip install --break-system-packages -r requirements.txt'
-```
-Installs `flask` and `pytest` directly on the agent. The `--break-system-packages` flag is required on newer Ubuntu/Debian systems where pip is managed by the OS.
-
+Installs `flask` and `pytest` using pip from `requirements.txt`.
+ 
 ### Stage 3 — Run Tests
-```groovy
-sh 'python3 -m pytest --tb=short -v'
-```
-Runs the full Pytest suite in `/tests`. The `-v` flag prints each test name and result. The `--tb=short` flag prints a concise traceback on failure. **If any test fails, the pipeline stops here and never touches Docker.** This is the safety gate.
-
+Runs the full Pytest suite in `/tests`. If any test fails, the pipeline stops here and never touches Docker. This is the safety gate.
+ 
 ### Stage 4 — Build Docker Image
-```groovy
-sh 'docker build -t cis4930-flask-app .'
-```
-Builds a Docker image from the `Dockerfile` in the repo root and tags it `cis4930-flask-app`. The image packages the app and all dependencies into a portable, reproducible unit.
-
+Builds a Docker image from the `Dockerfile` and tags it `cis4930-flask-app`.
+ 
 ### Stage 5 — Deploy with Docker Compose
-```groovy
-sh 'docker-compose down || true'
-sh 'docker-compose up -d --build'
-```
-First tears down any previous containers (the `|| true` prevents failure if nothing is running). Then brings up both the `flask-app` and `nginx` containers in detached mode. Nginx is wired to forward requests to the Flask container over Docker's internal network.
-
-### Stage 6 — Verify Deployment Through Nginx *(Thom's stage)*
-```groovy
-script {
-    sh 'sleep 5'
-    // retry loop for /health, /info, and /
-}
-```
-This is the deployment verification stage. Rather than a single blind `curl` call, it:
-
-- **Waits 5 seconds** after `docker-compose up` so containers have time to initialize before the first probe.
-- **Checks three endpoints** — `/health`, `/info`, and `/` — each through Nginx on port 8080.
-- **Retries up to 5 times** per endpoint with a 3-second delay between attempts, printing the HTTP status code on every attempt so the Jenkins log shows exactly what happened.
-- **Fails fast** with a descriptive error message if any endpoint never returns 200.
-- **Prints the full response bodies** of all three endpoints at the end so the Jenkins log serves as a screenshot-ready proof of a live, correct deployment.
-
+Tears down any previous containers, then brings up both the `flask-app` and `nginx` containers in detached mode.
+ 
+### Stage 6 — Verify Deployment Through Nginx
+Waits 5 seconds for containers to initialize, then checks `/health`, `/info`, and `/` through Nginx on port 8081. Retries up to 5 times per endpoint. Prints full response bodies at the end as proof of a live deployment.
+ 
 ### Post Actions
-```groovy
-post {
-    success  { echo "Pipeline completed successfully." }
-    failure  { sh 'docker-compose logs || true' }
-    always   { sh 'docker-compose down || true' }
-}
-```
-- On **success**: logs a confirmation message.
-- On **failure**: dumps `docker-compose logs` to help diagnose what went wrong.
-- **Always**: tears down the containers so the host stays clean between runs.
-
+- **Always:** tears down containers to keep the host clean between runs
+- **On failure:** dumps `docker compose logs` to help diagnose issues
 ---
-
+ 
 ## Running the Project Locally
-
+ 
 ### Without Jenkins (manual test)
-
+ 
 ```bash
 # 1. Clone the repo
-git clone <your-repo-url>
-cd <repo-folder>
-
+git clone https://github.com/Muski19/cis4930-cumulative-project
+cd cis4930-cumulative-project
+ 
 # 2. Install Python dependencies
 pip install -r requirements.txt
-
+ 
 # 3. Run tests
-pytest -v
-
+python -m pytest --tb=short -v
+ 
 # 4. Start the stack
-docker-compose up -d --build
-
+docker compose up -d --build
+ 
 # 5. Verify manually
-curl http://localhost:8080/health
-curl http://localhost:8080/info
-curl http://localhost:8080/
-
+curl http://localhost:8081/health
+curl http://localhost:8081/info
+curl http://localhost:8081/
+ 
 # 6. Tear down
-docker-compose down
+docker compose down
 ```
-
+ 
 ### With Jenkins (full pipeline)
-
-1. Make sure Jenkins is running: `http://localhost:8080` (default Jenkins port — if Nginx is also on 8080, adjust Jenkins to another port such as 9090).
-2. Create the pipeline job as described in [Jenkins Setup](#jenkins-setup).
-3. Click **Build Now**.
-4. Open **Console Output** to watch each stage in real time.
-5. A green checkmark means all stages passed including deployment verification.
+ 
+1. Make sure Docker Desktop is running (whale icon in system tray shows "Docker Desktop is running")
+2. Open Jenkins at `http://localhost:8080`
+3. Create the pipeline job as described in [Jenkins Setup](#jenkins-setup)
+4. Click **Build Now**
+5. Open **Console Output** to watch each stage in real time
+6. A green/blue pipeline overview means all stages passed including deployment verification
+---
 
 ---
 
 ## Demo Screenshots
 
-> *(Replace the placeholders below with actual screenshots when running the pipeline.)*
+### Pytest Passing -- Run Tests
 
-| What to capture | Where to find it |
-|---|---|
-| Pytest passing | Jenkins Console Output — Stage: Run Tests |
-| Docker Compose starting | Jenkins Console Output — Stage: Deploy with Docker Compose |
-| Verification retry loop + HTTP 200s | Jenkins Console Output — Stage: Verify Deployment Through Nginx |
-| Full response bodies (`/health`, `/info`, `/`) | Bottom of the Verify stage output |
-| Green pipeline overview | Jenkins job page → Stage View |
+![Pytest Passing -- Run Tests](image.png)
 
----
+### Deploying with Docker Compose
 
-*Project for CIS 4930 — DevOps toolchain demonstration.*
+![Deploying with Docker Compose](image-1.png)
+
+### Verification Retry Loop via Nginx
+
+![Verification Retry Loop via Nginx](image-2.png)
+
+### Verifying `/health`, `/info`, and Home Page
+
+![Full response bodies](image-3.png)
+
+### Green Pipeline View
+
+![Green Pipeline](image-4.png)
+
+### Home Page View
+
+![home page](image-5.png)
+
+### Health Page View
+
+![health page](image-6.png)
+
+### Info Page View
+
+![alt text](image-7.png)
